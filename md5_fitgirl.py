@@ -8,10 +8,12 @@ import argparse
 import sys
 
 def get_max_chunk_size():
+    """Get an optimal chunk size based on available system memory."""
     available_memory = psutil.virtual_memory().available
     return min(available_memory // 2, 6 * 1024**3)
 
 def md5_hash_file(path, chunk_size=None):
+    """Generate MD5 hash for a file with progressive updates."""
     md5 = hashlib.md5()
     total_size = os.path.getsize(path)
     if chunk_size is None:
@@ -31,6 +33,7 @@ def md5_hash_file(path, chunk_size=None):
     return md5.hexdigest()
 
 def parse_md5_file(md5_file_path):
+    """Parse an MD5 file and return the list of checksums and file paths."""
     entries = []
     with open(md5_file_path, 'r', encoding='utf-8') as f:
         for line in f:
@@ -39,6 +42,8 @@ def parse_md5_file(md5_file_path):
                 continue
             try:
                 checksum, relative_path = line.split(' *')
+                # Normalize path to use Unix-style separators
+                relative_path = relative_path.replace('\\', '/')
                 entries.append((checksum.lower(), os.path.normpath(relative_path)))
             except ValueError:
                 print(f"Skipping invalid line: {line}")
@@ -64,6 +69,7 @@ def find_md5_file(target: Path) -> Path | None:
     return None
 
 def main():
+    """Main function to process the command-line arguments and verify MD5 hashes."""
     parser = argparse.ArgumentParser(description="Verify files against an .md5 checksum list.")
     parser.add_argument("path", type=Path, help="Path to .md5 file or folder containing one.")
     args = parser.parse_args()
@@ -71,19 +77,25 @@ def main():
     colorama.init()
     fore = colorama.Fore
 
-    md5_file = find_md5_file(args.path.resolve())
+    # Resolve the target path and ensure it's cross-platform safe
+    target_path = args.path.resolve()
+
+    # Find the .md5 file
+    md5_file = find_md5_file(target_path)
     if not md5_file or not md5_file.exists():
-        print(f"{fore.RED}Error: No .md5 file found at '{args.path}'{fore.RESET}")
+        print(f"{fore.RED}Error: No .md5 file found at '{target_path}'{fore.RESET}")
         sys.exit(1)
 
-    print(f"{fore.YELLOW}Using MD5 file: {md5_file.name}{fore.RESET}")
+    print(f"{fore.YELLOW}Using MD5 file: {md5_file.relative_to(Path.cwd())}{fore.RESET}")
     entries = parse_md5_file(md5_file)
 
     Missing_files = 0
     ok_files = 0
     failed_files = 0
 
+    # Process each file and verify against its expected checksum
     for expected_hash, rel_path in entries:
+        # Adjust relative path to work with WSL
         abs_path = (md5_file.parent / rel_path).resolve()
         if not abs_path.exists():
             print(f"{fore.CYAN}[MISSING] {rel_path}{fore.RESET}")
@@ -103,7 +115,7 @@ def main():
     total_files_checked = ok_files + failed_files
 
     print(
-        f"{fore.YELLOW}Total Checked: {fore.GREEN}{total_files_checked}"
+        f"{fore.YELLOW}Total Checked: {fore.GREEN}{total_files_checked} "
         f"{fore.RESET}/{fore.CYAN}{len(entries)}{fore.RESET}\n"
         f"    {fore.GREEN}OK: {ok_files}{fore.RESET}\n"
         f"    {fore.RED}FAILED: {failed_files}{fore.RESET}\n"
