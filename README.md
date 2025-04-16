@@ -14,11 +14,13 @@ you can specify a path to the folder like for example:
 
  - specify a path to the repack folder 
 
+usage: `py md5_fitgirl C:/downloads/repacked_game`
+
 [![asciicast](https://asciinema.org/a/bE2OMzazXiOt89AUgqM0BeWot.svg)](https://asciinema.org/a/bE2OMzazXiOt89AUgqM0BeWot)
 
 it will automaticaly check for a md5 folder
 
-you can also use this to check the for files post install to see if anything got broken in the install step
+you can also use this to check for files post install to see if anything got broken in the install step
 
 yeah thats it basicaly
 
